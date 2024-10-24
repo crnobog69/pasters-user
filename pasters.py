@@ -3,10 +3,6 @@ import json
 import os
 from datetime import datetime  # Увежи модул datetime
 
-# Дефиниција имена конфигурационе и историјске датотеке
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')  # Конфигурациона датотека у истом директоријуму
-DEFAULT_HISTORY_FILE = os.path.join(os.path.dirname(__file__), 'history.json')  # Подразумевана локација за history.json
-
 def create_paste(content: str) -> str:
     conn = http.client.HTTPSConnection("paste.rs")
     
@@ -28,7 +24,20 @@ def create_paste(content: str) -> str:
         conn.close()
         raise Exception(f"Failed to create paste. Status code: {response.status}")
 
-def save_to_history(paste_url: str, note: str, history_file: str):
+def read_txt_file(file_path: str) -> str:
+    # Проверимо да ли фајл постоји
+    if not os.path.exists(file_path):
+        # Ако не постоји, креирамо нови .txt фајл
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write("Ово је пример текста. Молим вас измените садржај.")  # Упутство
+        print(f"Креиран фајл: {file_path} са подразумеваним садржајем.")
+        return ""  # Враћамо празан садржај ако је фајл ново креиран
+    
+    # Читање садржаја из .txt фајла
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
+
+def save_to_history(paste_url: str, note: str, history_file: str = 'history.json'):
     # Добити тренутни датум и време у формату дан-месец-година
     timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
     
@@ -43,41 +52,23 @@ def save_to_history(paste_url: str, note: str, history_file: str):
     history.append({
         'url': paste_url,
         'timestamp': timestamp,
-        'note': note  # Додајемо белешку из корисничког уноса
+        'note': note  # Додајемо белешку из txt фајла
     })
     
     # Сачувај ажурирану историју назад у JSON фајл
     with open(history_file, 'w', encoding='utf-8') as file:
         json.dump(history, file, ensure_ascii=False, indent=4)  # ensure_ascii=False да би ћирилица остала
 
-def load_config() -> str:
-    """Учитава конфигурациону датотеку и враћа локацију history.json."""
-    if not os.path.exists(CONFIG_FILE):
-        # Ако конфигурациона датотека не постоји, користи подразумевану локацију
-        history_path = DEFAULT_HISTORY_FILE
-        
-        # Сачувамо у конфигурационој датотеци
-        config = {'history_file': history_path}
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as config_file:
-            json.dump(config, config_file, ensure_ascii=False, indent=4)
-        
-        print(f"Конфигурациона датотека '{CONFIG_FILE}' је креирана са подразумеваном локацијом: {history_path}.")
-        return history_path
-
-    # Учитавање постојеће конфигурационе датотеке
-    with open(CONFIG_FILE, 'r', encoding='utf-8') as config_file:
-        config = json.load(config_file)
-        return config.get('history_file', DEFAULT_HISTORY_FILE)  # Враћа локацију за history.json
-
 def main():
-    # Учитај конфигурацију
-    history_file_path = load_config()
-    
-    # Унос текста од корисника
-    paste_content = input("Унесите текст који желите да објавите: ")
+    txt_file_path = 'input.txt'  # Унеси пут до свог txt фајла
+    history_file_path = 'history.json'  # Фајл где ће се чувати историја паста
 
-    if paste_content:  # Проверимо да ли је унос празан
-        print(f"Ваш унети текст:\n{paste_content}")
+    # Читање садржаја из .txt фајла
+    paste_content = read_txt_file(txt_file_path)
+
+    # Испис садржаја у конзолу
+    if paste_content:  # Исписује се само ако фајл већ постоји
+        print(f"Садржај вашег txt фајла:\n{paste_content}")
         
         # Креирање пасте на paste.rs
         try:
@@ -89,7 +80,7 @@ def main():
         except Exception as e:
             print(e)
     else:
-        print("Нисте унели текст. Молимо вас да покушате поново.")
+        print("Фајл не садржи текст. Молимо вас да измените садржај.")
 
 if __name__ == '__main__':
     main()
